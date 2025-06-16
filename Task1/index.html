@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Progress Bar Example</title>
+  <style>
+    #progressContainer {
+      width: 100%;
+      background-color: #eee;
+      border-radius: 10px;
+      overflow: hidden;
+      height: 20px;
+      margin-top: 10px;
+    }
+
+    #progressBar {
+      width: 0%;
+      height: 100%;
+      background-color: #4caf50;
+      transition: width 0.3s;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const appDiv = document.getElementById('app');
+    const button = document.createElement('button');
+    button.textContent = 'Add';
+    const progressContainer = document.createElement('div');
+    progressContainer.id = 'progressContainer';
+    const progressBar = document.createElement('div');
+    progressBar.id = 'progressBar';
+    progressContainer.appendChild(progressBar);
+
+    appDiv.appendChild(button);
+    appDiv.appendChild(progressContainer);
+    let progress = 0;
+
+    button.addEventListener('click', () => {
+      if (progress < 100) {
+        progress += 10; 
+        progressBar.style.width = progress + '%';
+      }
+    });
+  </script>
+</body>
+</html>
