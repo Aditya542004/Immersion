@@ -5,6 +5,11 @@ const methodOverride = require('method-override');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const session = require('express-session');
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+const flash = require('connect-flash');
+const User = require('./models/User');
 const PORT = 3000;
 
 // MongoDB connection
@@ -45,35 +50,101 @@ app.use(methodOverride('_method'));
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
+app.use(session({ secret: 'secret', resave: false, saveUninitialized: false }));
+app.use(flash());
+app.use(passport.initialize());
+app.use(passport.session());
 
-// Home page - list all vehicles
-app.get('/', async (req, res) => {
-  const vehicles = await Vehicle.find();
-  res.render('index', { vehicles });
+// Passport config
+passport.use(new LocalStrategy(async (username, password, done) => {
+  const user = await User.findOne({ username });
+  if (!user) return done(null, false, { message: 'Incorrect username.' });
+  const valid = await user.isValidPassword(password);
+  if (!valid) return done(null, false, { message: 'Incorrect password.' });
+  return done(null, user);
+}));
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser(async (id, done) => {
+  const user = await User.findById(id);
+  done(null, user);
 });
 
-// Show add vehicle form
-app.get('/vehicles/add', (req, res) => {
+// Auth middleware
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) return next();
+  res.redirect('/login');
+}
+
+// Redirect root to login if not authenticated, or to register if no users
+app.get('/', async (req, res) => {
+  const userCount = await User.countDocuments();
+  if (userCount === 0) {
+    return res.redirect('/register');
+  }
+  if (!req.isAuthenticated()) {
+    return res.redirect('/login');
+  }
+  const vehicles = await Vehicle.find();
+  res.render('index', { vehicles, user: req.user });
+});
+
+// Login page: if no users, redirect to register
+app.get('/login', async (req, res, next) => {
+  const userCount = await User.countDocuments();
+  if (userCount === 0) {
+    return res.redirect('/register');
+  }
+  if (req.isAuthenticated()) return res.redirect('/');
+  next();
+}, (req, res) => res.render('login', { message: req.flash('error') }));
+
+// Register page: if users exist and logged in, redirect to home
+app.get('/register', async (req, res, next) => {
+  const userCount = await User.countDocuments();
+  if (userCount > 0 && req.isAuthenticated()) return res.redirect('/');
+  next();
+}, (req, res) => res.render('register', { message: req.flash('error') }));
+// Auth routes
+app.post('/register', async (req, res) => {
+  try {
+    const { username, password, email, age } = req.body;
+    await User.create({ username, password, email, age });
+    res.redirect('/login');
+  } catch (err) {
+    req.flash('error', 'Username already exists');
+    res.redirect('/register');
+  }
+});
+
+app.post('/login', passport.authenticate('local', {
+  successRedirect: '/',
+  failureRedirect: '/login',
+  failureFlash: true
+}));
+
+app.get('/logout', (req, res) => {
+  req.logout(() => res.redirect('/login'));
+});
+
+// Vehicle routes (protected)
+app.get('/vehicles/add', ensureAuthenticated, (req, res) => {
   res.render('add');
 });
 
-// Add a new vehicle (with image upload)
-app.post('/vehicles', upload.single('image'), async (req, res) => {
+app.post('/vehicles', ensureAuthenticated, upload.single('image'), async (req, res) => {
   const { vehicleName, price, desc, brand } = req.body;
   const image = req.file ? '/uploads/' + req.file.filename : '';
   await Vehicle.create({ vehicleName, price, image, desc, brand });
   res.redirect('/');
 });
 
-// Show edit vehicle form
-app.get('/vehicles/:id/edit', async (req, res) => {
+app.get('/vehicles/:id/edit', ensureAuthenticated, async (req, res) => {
   const vehicle = await Vehicle.findById(req.params.id);
   if (!vehicle) return res.status(404).send('Not found');
   res.render('edit', { vehicle });
 });
 
-// Update a vehicle (with optional image upload)
-app.post('/vehicles/:id', upload.single('image'), async (req, res) => {
+app.post('/vehicles/:id', ensureAuthenticated, upload.single('image'), async (req, res) => {
   const { vehicleName, price, desc, brand } = req.body;
   const updateData = { vehicleName, price, desc, brand };
   if (req.file) {
@@ -83,8 +154,7 @@ app.post('/vehicles/:id', upload.single('image'), async (req, res) => {
   res.redirect('/');
 });
 
-// Delete a vehicle
-app.delete('/vehicles/:id', async (req, res) => {
+app.delete('/vehicles/:id', ensureAuthenticated, async (req, res) => {
   await Vehicle.findByIdAndDelete(req.params.id);
   res.redirect('/');
 });
