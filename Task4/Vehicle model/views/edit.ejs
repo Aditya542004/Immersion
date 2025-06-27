@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edit Vehicle</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 500px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 32px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    input, label {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 15px;
+    }
+    input[type="file"] {
+      border: none;
+      background: none;
+      padding: 2px;
+    }
+    button {
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 15px;
+      margin-top: 10px;
+    }
+    button.cancel-btn {
+      background: #e53935;
+      margin-left: 10px;
+    }
+    img {
+      max-width: 120px;
+      max-height: 100px;
+      display: block;
+      margin-bottom: 10px;
+    }
+    .btn-row {
+      display: flex;
+      justify-content: flex-start;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Add this inside your <body> or .container -->
+<div style="text-align:right;">
+  <form action="/logout" method="get" style="display:inline;">
+    <button type="submit" style="background:#e53935;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;">Logout</button>
+  </form>
+</div>
+  <div class="container">
+    <h1>Edit Vehicle</h1>
+    <form method="POST" action="/vehicles/<%= vehicle.id %>" enctype="multipart/form-data">
+      <% if (vehicle.image) { %>
+        <img src="<%= vehicle.image %>" alt="image">
+      <% } %>
+      <input name="vehicleName" value="<%= vehicle.vehicleName %>" required>
+      <input name="price" value="<%= vehicle.price %>" required>
+      <label>Change Image (optional):</label>
+      <input type="file" name="image" accept="image/*">
+      <input name="desc" value="<%= vehicle.desc %>" required>
+      <input name="brand" value="<%= vehicle.brand %>" required>
+      <div class="btn-row">
+        <button type="submit">Save</button>
+        <a href="/"><button type="button" class="cancel-btn">Cancel</button></a>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
